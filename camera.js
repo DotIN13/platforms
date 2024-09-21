@@ -6,7 +6,8 @@ class Camera {
     this.targetY = 0;
   }
 
-  update() {
+  update(maxLevel) {
+    this.targetY = Math.max(this.targetY, maxLevel * settings.PLATFORM_SPACING);
     this.y += (this.targetY - this.y) * settings.CAMERA_SPEED;
   }
 }

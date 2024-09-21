@@ -3,48 +3,23 @@
 // Import the Settings class
 import { settings, canvas, ctx } from "./settings.js";
 import { camera, t } from "./camera.js";
+import { Ball } from "./ball.js";
+import { Explosion } from "./explosion.js";
 
-// Ball class remains unchanged
-class Ball {
-  constructor(x, y) {
-    this.level = 0;
-    this.x = x;
-    this.y = y;
-    this.radius = settings.BALL_RADIUS;
-    this.vy = 0;
-  }
-
-  update(deltaTicks) {
-    this.vy += settings.GRAVITY * deltaTicks;
-    this.y += this.vy * deltaTicks;
-  }
-
-  draw() {
-    ctx.fillStyle = "red";
-    ctx.beginPath();
-    ctx.arc(this.x, t(this.y), this.radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  /**
-   * Handle ball bounce
-   */
-  bounce() {
-    this.vy = -Math.sqrt(2 * settings.GRAVITY * settings.BOUNCING_HEIGHT);
-  }
-}
-
-// Platform class with spikes
+// Platform class with object pooling
 class Platform {
   constructor(index) {
+    this.reset(index);
+  }
+
+  reset(index) {
     this.index = index;
     this.y = index * settings.PLATFORM_SPACING;
     this.holes = this.generateHoles();
-    this.spikes = this.generateSpikes(); // New property for spikes
+    this.spikes = this.generateSpikes();
   }
 
   generateHoles() {
-    // Existing code for generating holes
     const holeCount = Math.floor(Math.random() * 3) + 1; // 1 to 3 holes
     const holes = [];
     let attempts = 0;
@@ -81,7 +56,6 @@ class Platform {
   }
 
   generateSpikes() {
-    // New method for generating spikes
     const spikeCount = this.spikeCount();
     const spikes = [];
     let attempts = 0;
@@ -93,7 +67,8 @@ class Platform {
 
       // Check for overlap with other spikes and holes
       const overlapWithSpikes = spikes.some(
-        (spike) => spikeX < spike.x + spike.width && spikeX + spikeWidth > spike.x
+        (spike) =>
+          spikeX < spike.x + spike.width && spikeX + spikeWidth > spike.x
       );
 
       const overlapWithHoles = this.holes.some(
@@ -113,51 +88,57 @@ class Platform {
   update(moveDirection, deltaTicks) {
     const horizontalMovement = moveDirection * settings.MOVE_SPEED * deltaTicks;
 
-    this.holes.forEach((hole) => {
+    for (const hole of this.holes) {
       hole.x += horizontalMovement;
 
       // Wrap around logic for holes
       if (hole.x < -hole.width) hole.x += settings.WIDTH + hole.width;
       if (hole.x > settings.WIDTH) hole.x -= settings.WIDTH + hole.width;
-    });
+    }
 
-    this.spikes.forEach((spike) => {
+    for (const spike of this.spikes) {
       spike.x += horizontalMovement;
 
       // Wrap around logic for spikes
       if (spike.x < -spike.width) spike.x += settings.WIDTH + spike.width;
       if (spike.x > settings.WIDTH) spike.x -= settings.WIDTH + spike.width;
-    });
+    }
   }
 
   draw() {
     const y = t(this.y);
+    const width = settings.WIDTH;
+    const platformHeight = settings.PLATFORM_HEIGHT;
+
     ctx.fillStyle = "white";
-    ctx.fillRect(0, y, settings.WIDTH, settings.PLATFORM_HEIGHT);
+    ctx.fillRect(0, y, width, platformHeight);
 
     // Clear holes
-    this.holes.forEach((hole) => {
-      ctx.clearRect(hole.x, y - 1, hole.width, settings.PLATFORM_HEIGHT + 2);
-    });
+    for (const hole of this.holes) {
+      ctx.clearRect(hole.x, y - 1, hole.width, platformHeight + 2);
+    }
 
     // Draw spikes
-    this.spikes.forEach((spike) => {
+    if (this.spikes.length > 0) {
       ctx.fillStyle = "orange";
-      ctx.beginPath();
-      const spikeHeight = settings.PLATFORM_HEIGHT * 1.5;
-      ctx.moveTo(spike.x, y);
-      ctx.lineTo(spike.x + spike.width / 2, y - spikeHeight);
-      ctx.lineTo(spike.x + spike.width, y);
-      ctx.closePath();
-      ctx.fill();
-    });
+      const spikeHeight = platformHeight * 1.5;
+      for (const spike of this.spikes) {
+        ctx.beginPath();
+        ctx.moveTo(spike.x, y);
+        ctx.lineTo(spike.x + spike.width / 2, y - spikeHeight);
+        ctx.lineTo(spike.x + spike.width, y);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
   }
 }
 
-// PlatformManager class with spike collision detection
+// PlatformManager class with object pooling and optimized collision detection
 class PlatformManager {
   constructor() {
     this.platforms = [];
+    this.platformPool = [];
     this.moveDirection = 0;
     this.lastDrawn = 0;
 
@@ -170,7 +151,13 @@ class PlatformManager {
   }
 
   createPlatform(index) {
-    const platform = new Platform(index);
+    let platform;
+    if (this.platformPool.length > 0) {
+      platform = this.platformPool.pop();
+      platform.reset(index);
+    } else {
+      platform = new Platform(index);
+    }
     this.platforms.push(platform);
     this.lastDrawn = index;
   }
@@ -186,35 +173,48 @@ class PlatformManager {
   }
 
   update(deltaTicks) {
-    // Remove platforms that are off the screen
-    this.platforms = this.platforms.filter(
-      (platform) => t(platform.y) >= 0
-    );
-
-    const targetNum = Math.ceil(
-      (camera.y + settings.HEIGHT) / settings.PLATFORM_SPACING
-    );
-    for (let i = this.lastDrawn + 1; i < targetNum; i++) {
-      this.createPlatform(i);
+    for (let i = this.platforms.length - 1; i >= 0; i--) {
+      const platform = this.platforms[i];
+      if (t(platform.y) < 0) {
+        // Move platform to pool
+        this.platforms.splice(i, 1);
+        this.platformPool.push(platform);
+      } else {
+        platform.update(this.moveDirection, deltaTicks);
+      }
     }
 
-    // Update platforms
-    this.platforms.forEach((platform) =>
-      platform.update(this.moveDirection, deltaTicks)
-    );
+    // Generate new platforms as needed
+    while (
+      (this.lastDrawn + 1) * settings.PLATFORM_SPACING <
+      camera.y + settings.HEIGHT
+    ) {
+      this.createPlatform(++this.lastDrawn);
+    }
   }
 
   draw() {
-    this.platforms.forEach((platform) => platform.draw());
+    for (const platform of this.platforms) {
+      platform.draw();
+    }
   }
 
   getCollidingPlatform(ball) {
-    return this.platforms.find(
-      (platform) =>
-        ball.vy > 0 && // Ball is moving downward
-        ball.y + ball.radius > platform.y &&
-        ball.y + ball.radius < platform.y + settings.PLATFORM_HEIGHT
+    const expectedPlatformIndex = Math.floor(
+      (ball.y + ball.radius) / settings.PLATFORM_SPACING
     );
+    const platform = this.platforms.find(
+      (platform) => platform.index === expectedPlatformIndex
+    );
+    if (
+      platform &&
+      ball.vy > 0 &&
+      ball.y + ball.radius > platform.y &&
+      ball.y + ball.radius < platform.y + settings.PLATFORM_HEIGHT
+    ) {
+      return platform;
+    }
+    return null;
   }
 
   isBallInHole(ball, platform) {
@@ -260,7 +260,7 @@ class PlatformManager {
   }
 }
 
-// Game class with restart functionality
+// Game class with optimizations
 class Game {
   constructor() {
     this.ball = new Ball(settings.WIDTH / 2, 50);
@@ -269,51 +269,80 @@ class Game {
     this.score = 0;
     this.lastTime = 0; // Initialize lastTime
     this.gameOver = false; // Game over flag
+    this.animationFrameId = null; // Keep track of animation frame
+    this.explosion = null; // Explosion animation
+
+    // Bind event handler methods
+    this.handleKeyDown = this.handleKeyDown.bind(this);
+    this.handleKeyUp = this.handleKeyUp.bind(this);
+    this.handleTouchStart = this.handleTouchStart.bind(this);
+    this.handleTouchMove = this.handleTouchMove.bind(this);
+    this.handleTouchEnd = this.handleTouchEnd.bind(this);
+    this.handleClick = this.handleClick.bind(this);
+
     this.bindEvents();
-    requestAnimationFrame(this.gameLoop.bind(this));
+    this.startGameLoop();
   }
 
   bindEvents() {
     // Keyboard controls
-    document.addEventListener("keydown", ({ key }) => {
-      if (this.gameOver) return; // Disable controls if game is over
-      if (key === "ArrowLeft") this.platformManager.setMoveDirection(1);
-      if (key === "ArrowRight") this.platformManager.setMoveDirection(-1);
-    });
-
-    document.addEventListener("keyup", ({ key }) => {
-      if (this.gameOver) return; // Disable controls if game is over
-      if (key === "ArrowLeft") this.platformManager.stopMovement(1);
-      if (key === "ArrowRight") this.platformManager.stopMovement(-1);
-    });
+    document.addEventListener("keydown", this.handleKeyDown);
+    document.addEventListener("keyup", this.handleKeyUp);
 
     // Touch controls
-    canvas.addEventListener("touchstart", (event) => {
-      if (this.gameOver) {
-        this.resetGame();
-      } else {
-        this.handleTouch(event);
-      }
-    });
-
-    canvas.addEventListener("touchmove", (event) => {
-      if (!this.gameOver) {
-        this.handleTouch(event);
-      }
-    });
-
-    canvas.addEventListener("touchend", () => {
-      if (!this.gameOver) {
-        this.platformManager.moveDirection = 0;
-      }
-    });
+    canvas.addEventListener("touchstart", this.handleTouchStart);
+    canvas.addEventListener("touchmove", this.handleTouchMove);
+    canvas.addEventListener("touchend", this.handleTouchEnd);
 
     // Click to restart
-    canvas.addEventListener("click", () => {
-      if (this.gameOver) {
-        this.resetGame();
-      }
-    });
+    canvas.addEventListener("click", this.handleClick);
+  }
+
+  unbindEvents() {
+    document.removeEventListener("keydown", this.handleKeyDown);
+    document.removeEventListener("keyup", this.handleKeyUp);
+    canvas.removeEventListener("touchstart", this.handleTouchStart);
+    canvas.removeEventListener("touchmove", this.handleTouchMove);
+    canvas.removeEventListener("touchend", this.handleTouchEnd);
+    canvas.removeEventListener("click", this.handleClick);
+  }
+
+  handleKeyDown(event) {
+    if (this.gameOver) return this.resetGame(); // Restart the game if it's over
+    if (event.key === "ArrowLeft") this.platformManager.setMoveDirection(1);
+    if (event.key === "ArrowRight") this.platformManager.setMoveDirection(-1);
+  }
+
+  handleKeyUp(event) {
+    if (this.gameOver) return; // Disable controls if game is over
+    if (event.key === "ArrowLeft") this.platformManager.stopMovement(1);
+    if (event.key === "ArrowRight") this.platformManager.stopMovement(-1);
+  }
+
+  handleTouchStart(event) {
+    if (this.gameOver) {
+      this.resetGame();
+    } else {
+      this.handleTouch(event);
+    }
+  }
+
+  handleTouchMove(event) {
+    if (!this.gameOver) {
+      this.handleTouch(event);
+    }
+  }
+
+  handleTouchEnd(event) {
+    if (!this.gameOver) {
+      this.platformManager.moveDirection = 0;
+    }
+  }
+
+  handleClick(event) {
+    if (this.gameOver) {
+      this.resetGame();
+    }
   }
 
   handleTouch(event) {
@@ -323,7 +352,7 @@ class Game {
     const rect = canvas.getBoundingClientRect();
     const touchX = touch.clientX - rect.left;
 
-    if (touchX < settings.WIDTH / 2) {
+    if (touchX < (settings.WIDTH * settings.SCALE_FACTOR) / 2) {
       // Touch on the left half
       this.platformManager.setMoveDirection(1);
     } else {
@@ -332,42 +361,68 @@ class Game {
     }
   }
 
+  startGameLoop() {
+    if (this.animationFrameId) return; // Prevent multiple loops
+    this.animationFrameId = requestAnimationFrame(this.gameLoop.bind(this));
+  }
+
+  stopGameLoop() {
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+  }
+
   resetGame() {
     // Reset game state
+    this.stopGameLoop();
+    this.unbindEvents();
+
+    this.ball = null;
+    this.platformManager = null;
+
     this.ball = new Ball(settings.WIDTH / 2, 50);
     this.platformManager = new PlatformManager();
+    this.explosion = null;
+
     this.maxLevel = 0;
     this.score = 0;
     this.gameOver = false;
     this.lastTime = 0;
     camera.y = 0;
     camera.targetY = 0;
-    // Restart the game loop
-    requestAnimationFrame(this.gameLoop.bind(this));
+
+    this.bindEvents();
+    this.startGameLoop();
   }
 
   gameLoop(currentTime) {
     if (!this.lastTime) this.lastTime = currentTime;
-    // Calculate deltaTime in ticks (1 tick = 1/60 second)
-    const deltaTime = currentTime - this.lastTime;
-    const deltaTicks = deltaTime / (1000 / 60);
+    const deltaTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
+    const deltaTicks = deltaTime * 60; // Convert to ticks (assuming 60 FPS)
     this.lastTime = currentTime;
 
     this.update(deltaTicks);
     this.draw();
 
-    if (!this.gameOver) {
-      requestAnimationFrame(this.gameLoop.bind(this));
-    } else {
+    if (this.gameOver && this.explosion.isFinished) {
+      this.stopGameLoop();
       this.drawGameOver();
     }
+
+    this.animationFrameId = requestAnimationFrame(this.gameLoop.bind(this));
   }
 
   /**
    * Update states of the game objects
    */
   update(deltaTicks) {
-    if (this.gameOver) return;
+    if (this.gameOver && this.explosion) {
+      this.explosion.update(deltaTicks);
+      return;
+    }
+
+    if (this.gameOver && !this.explosion) return;
 
     // Update ball
     this.ball.update(deltaTicks);
@@ -375,8 +430,8 @@ class Game {
     this.platformManager.handleCollisions(this.ball);
 
     // Check if the ball hit a spike
-    if (this.ball.hitSpike) {
-      this.gameOver = true;
+    if (this.ball.hitSpike && !this.ball.isExploding) {
+      this.triggerExplosion();
       return;
     }
 
@@ -387,23 +442,27 @@ class Game {
     }
 
     // Update camera
-    camera.targetY = Math.max(
-      camera.targetY,
-      this.maxLevel * settings.PLATFORM_SPACING
-    );
-    camera.update();
+    camera.update(this.maxLevel);
+  }
+
+  triggerExplosion() {
+    this.ball.isExploding = true;
+    this.explosion = new Explosion(this.ball.x, this.ball.y);
+    this.gameOver = true;
   }
 
   draw() {
     ctx.clearRect(0, 0, settings.WIDTH, settings.HEIGHT);
     this.platformManager.draw();
     this.ball.draw();
+    if (this.explosion) this.explosion.draw();
     this.drawScore();
   }
 
   drawScore() {
     ctx.fillStyle = "yellow";
     ctx.font = "20px Arial";
+    ctx.textAlign = "left";
     ctx.fillText(`Score: ${this.score}`, 10, 30);
   }
 

@@ -14,18 +14,14 @@ class Settings {
     this.BALL_RADIUS = 10;
     this.MOVE_SPEED = 10; // Movement speed per tick
     this.CAMERA_SPEED = 0.1; // Camera speed
-
-    // Game animations
     this.BOUNCING_HEIGHT = 0.7 * this.PLATFORM_SPACING;
+    this.MAX_BALL_SPEED = 15; // Maximum ball speed
 
     // Canvas dimensions
-    this.CANVAS_WIDTH = 400; // Original game width
-    this.CANVAS_HEIGHT = 600; // Original game height
-    this.ASPECT_RATIO = this.CANVAS_WIDTH / this.CANVAS_HEIGHT; // 0.6667
-
-    // Dynamic canvas size
-    this.WIDTH = this.CANVAS_WIDTH;
-    this.HEIGHT = this.CANVAS_HEIGHT;
+    this.WIDTH = 600; // Game coordinate width
+    this.HEIGHT = 1000; // Game coordinate height
+    this.ASPECT_RATIO = this.WIDTH / this.HEIGHT; // Default aspect ratio
+    this.SCALE_FACTOR = 1; // Scale factor for canvas
 
     // Initialize canvas size
     this.resizeCanvas();
@@ -38,38 +34,39 @@ class Settings {
   }
 
   resizeCanvas() {
-    const aspectRatio = this.ASPECT_RATIO;
-
     // Get the available width and height
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
 
     // Calculate the maximum canvas size that fits in the window while maintaining aspect ratio
-    let newHeight = windowHeight;
-    let newWidth = newHeight * aspectRatio;
+    let canvasHeight = windowHeight;
+    let canvasWidth = canvasHeight * this.ASPECT_RATIO;
 
-    if (newWidth > windowWidth) {
-      newWidth = windowWidth;
-      newHeight = windowHeight;
+    // If the screen is narrow
+    if (canvasWidth > windowWidth) {
+      canvasWidth = windowWidth;
+      canvasHeight = windowHeight;
+      this.ASPECT_RATIO = canvasWidth / canvasHeight;
+      this.HEIGHT = this.WIDTH / this.ASPECT_RATIO; // Adjust the game coordinate height
     }
 
     // Adjust for device pixel ratio
-    const scale = window.devicePixelRatio || 1;
+    const dpr = window.devicePixelRatio || 1;
 
-    // Set the canvas's internal dimensions to match the displayed size multiplied by the scale
-    this.canvas.width = newWidth * scale;
-    this.canvas.height = newHeight * scale;
+    // Set the canvas's internal dimensions to match the displayed size multiplied by the dpr
+    this.canvas.width = canvasWidth * dpr;
+    this.canvas.height = canvasHeight * dpr;
 
     // Set the canvas's CSS size to the new width and height
-    this.canvas.style.width = `${newWidth}px`;
-    this.canvas.style.height = `${newHeight}px`;
+    this.canvas.style.width = `${canvasWidth}px`;
+    this.canvas.style.height = `${canvasHeight}px`;
 
-    // Update the drawing context scale
-    this.ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    // Update the drawing context dpr
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Update WIDTH and HEIGHT properties
-    this.WIDTH = this.canvas.width / scale;
-    this.HEIGHT = this.canvas.height / scale;
+    // Update the scale factor
+    this.SCALE_FACTOR = canvasWidth / this.WIDTH;
+    this.ctx.scale(this.SCALE_FACTOR, this.SCALE_FACTOR);
   }
 }
 
