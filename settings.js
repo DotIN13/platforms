@@ -49,9 +49,8 @@ class Settings {
     let newWidth = newHeight * aspectRatio;
 
     if (newWidth > windowWidth) {
-      // Adjust width and height to fit within window height
+      newWidth = windowWidth;
       newHeight = windowHeight;
-      newWidth = windowHeight * aspectRatio;
     }
 
     // Adjust for device pixel ratio
