@@ -18,10 +18,13 @@ class Settings {
     this.MAX_BALL_SPEED = 15; // Maximum ball speed
 
     // Canvas dimensions
-    this.WIDTH = 600; // Game coordinate width
-    this.HEIGHT = 1000; // Game coordinate height
+    this.WIDTH = 500; // Game coordinate width
+    this.HEIGHT = 800; // Game coordinate height
     this.ASPECT_RATIO = this.WIDTH / this.HEIGHT; // Default aspect ratio
     this.SCALE_FACTOR = 1; // Scale factor for canvas
+
+    // Combo
+    this.COMBO_DURATION = 30; // Combo duration in ticks
 
     // Initialize canvas size
     this.resizeCanvas();

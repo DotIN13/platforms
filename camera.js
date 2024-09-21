@@ -15,7 +15,7 @@ class Camera {
 const camera = new Camera();
 
 function t(y) {
-  return y - camera.y + settings.HEIGHT / 2;
+  return y - camera.y + settings.HEIGHT * (2 / 5);
 }
 
 export { camera, t };
