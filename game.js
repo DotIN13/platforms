@@ -18,6 +18,7 @@ class Game {
     this.gameOver = false; // Game over flag
     this.animationFrameId = null; // Keep track of animation frame
     this.explosion = null; // Explosion animation
+    this.explosionEnd = false; // Flag to check if explosion is finished
 
     // Combo system properties
     this.comboActive = false;
@@ -62,45 +63,44 @@ class Game {
   }
 
   handleKeyDown(event) {
-    if (this.gameOver) return this.resetGame(); // Restart the game if it's over
+    if (this.gameOver && this.explosionEnd) return this.resetGame(); // Restart the game if it's over
+
     if (event.key === "ArrowLeft") this.platformManager.setMoveDirection(1);
     if (event.key === "ArrowRight") this.platformManager.setMoveDirection(-1);
   }
 
   handleKeyUp(event) {
     if (this.gameOver) return; // Disable controls if game is over
+
     if (event.key === "ArrowLeft") this.platformManager.stopMovement(1);
     if (event.key === "ArrowRight") this.platformManager.stopMovement(-1);
   }
 
   handleTouchStart(event) {
-    if (this.gameOver) {
-      this.resetGame();
-    } else {
-      this.handleTouch(event);
-    }
+    if (this.gameOver && this.explosionEnd) return this.resetGame();
+
+    this.handleTouch(event);
   }
 
   handleTouchMove(event) {
-    if (!this.gameOver) {
-      this.handleTouch(event);
-    }
+    if (this.gameOver) return;
+
+    this.handleTouch(event);
   }
 
   handleTouchEnd(event) {
-    if (!this.gameOver) {
-      this.platformManager.moveDirection = 0;
-    }
+    if (this.gameOver) return;
+
+    this.platformManager.moveDirection = 0;
   }
 
   handleClick(event) {
-    if (this.gameOver) {
-      this.resetGame();
-    }
+    if (this.gameOver && this.explosionEnd) this.resetGame();
   }
 
   handleTouch(event) {
     if (this.gameOver) return; // Disable controls if game is over
+
     event.preventDefault();
     const touch = event.touches[0];
     const rect = canvas.getBoundingClientRect();
@@ -138,6 +138,7 @@ class Game {
     this.ball = new Ball(settings.WIDTH / 2, 50);
     this.platformManager = new PlatformManager();
     this.explosion = null;
+    this.explosionEnd = false;
 
     this.maxLevel = 0;
     this.score = 0;
@@ -164,11 +165,6 @@ class Game {
     this.update(deltaTicks);
     this.draw();
 
-    if (this.gameOver && this.explosion.isFinished) {
-      this.stopGameLoop();
-      this.drawGameOver();
-    }
-
     this.animationFrameId = requestAnimationFrame(this.gameLoop.bind(this));
   }
 
@@ -176,12 +172,12 @@ class Game {
    * Update states of the game objects
    */
   update(deltaTicks) {
-    if (this.gameOver && this.explosion) {
-      this.explosion.update(deltaTicks);
-      return;
-    }
+    // Update explosion if game is over
+    if (this.gameOver) {
+      if (this.explosionEnd) return;
 
-    if (this.gameOver && !this.explosion) return;
+      return this.explosion.update(deltaTicks);
+    }
 
     // Update ball
     this.ball.update(deltaTicks);
@@ -250,12 +246,23 @@ class Game {
     ctx.clearRect(0, 0, settings.WIDTH, settings.HEIGHT);
     this.platformManager.draw();
     this.ball.draw();
-    if (this.explosion) this.explosion.draw();
+    if (this.explosion) this.explosionEnd = this.explosion.draw();
     this.drawScore();
     if (this.comboActive) this.drawCombo();
+
+    // Draw game over screen
+    if (this.gameOver && this.explosionEnd) {
+      this.stopGameLoop();
+      this.drawGameOver();
+    }
   }
 
   drawScore() {
+    // Add a background to the score text
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(0, 0, 100, 40);
+
+    // Draw the score text
     ctx.fillStyle = "yellow";
     ctx.font = "20px Arial";
     ctx.textAlign = "left";

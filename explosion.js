@@ -33,6 +33,7 @@ class Explosion {
 
   update(deltaTicks) {
     this.isFinished = true;
+
     for (const particle of this.particles) {
       particle.age += deltaTicks;
       if (particle.age < particle.lifetime) {
@@ -45,6 +46,9 @@ class Explosion {
     }
   }
 
+  /**
+   * @returns {boolean} Whether the explosion animation is finished
+   */
   draw() {
     for (const particle of this.particles) {
       if (particle.age < particle.lifetime) {
@@ -57,6 +61,8 @@ class Explosion {
         ctx.globalAlpha = 1; // Reset alpha
       }
     }
+
+    return this.isFinished;
   }
 }
 
