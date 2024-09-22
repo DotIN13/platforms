@@ -1,0 +1,15 @@
+{
+  "game": {
+    "title": "My Game",
+    "gameOver": "Game Over",
+    "score": "Score: {{score}}",
+    "finalScore": "Final Score: {{score}}",
+    "clickToRestart": "Click or Tap to Restart",
+    "combo": "Combo x{{comboCount}}!",
+    "levelUp": "Level {{level}}"
+  },
+  "controls": {
+    "left": "Move Left",
+    "right": "Move Right"
+  }
+}

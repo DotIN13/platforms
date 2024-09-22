@@ -1,0 +1,15 @@
+{
+  "game": {
+    "title": "我的游戏",
+    "gameOver": "游戏结束",
+    "score": "得分：{{score}}",
+    "finalScore": "最终得分：{{score}}",
+    "clickToRestart": "点击或轻触屏幕以重新开始",
+    "combo": "连击 x{{comboCount}}！",
+    "levelUp": "第 {{level}} 关"
+  },
+  "controls": {
+    "left": "向左移动",
+    "right": "向右移动"
+  }
+}

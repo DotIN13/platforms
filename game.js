@@ -1,8 +1,10 @@
 // game.js
 
+import i18next from "./i18n/i18n.js";
+
 // Import the Settings class
 import { settings, canvas, ctx } from "./settings.js";
-import { camera, t } from "./camera.js";
+import { camera } from "./camera.js";
 import { Ball } from "./ball.js";
 import { Explosion } from "./explosion.js";
 import { PlatformManager } from "./platform.js";
@@ -266,14 +268,18 @@ class Game {
     ctx.fillStyle = "yellow";
     ctx.font = "20px Arial";
     ctx.textAlign = "left";
-    ctx.fillText(`Score: ${this.score}`, 10, 30);
+    ctx.fillText(i18next.t("game.score", { score: this.score }), 10, 30);
   }
 
   drawCombo() {
     ctx.fillStyle = "cyan";
     ctx.font = "30px Arial";
     ctx.textAlign = "center";
-    ctx.fillText(`COMBO x${this.comboCount + 1}!`, settings.WIDTH / 2, 60);
+    ctx.fillText(
+      i18next.t("game.combo", { comboCount: this.comboCount }),
+      settings.WIDTH / 2,
+      80
+    );
   }
 
   drawGameOver() {
@@ -283,18 +289,22 @@ class Game {
     ctx.fillStyle = "white";
     ctx.font = "40px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("Game Over", settings.WIDTH / 2, settings.HEIGHT / 2 - 40);
+    ctx.fillText(
+      i18next.t("game.gameOver"),
+      settings.WIDTH / 2,
+      settings.HEIGHT / 2 - 40
+    );
 
     ctx.font = "20px Arial";
     ctx.fillText(
-      `Final Score: ${this.score}`,
+      i18next.t("game.finalScore", { score: this.score }),
       settings.WIDTH / 2,
       settings.HEIGHT / 2
     );
 
     ctx.font = "20px Arial";
     ctx.fillText(
-      `Click or Tap to Restart`,
+      i18next.t("game.clickToRestart"),
       settings.WIDTH / 2,
       settings.HEIGHT / 2 + 40
     );
@@ -302,4 +312,6 @@ class Game {
 }
 
 // Start the game
-const game = new Game();
+i18next.on("initialized", () => {
+  const game = new Game();
+});
