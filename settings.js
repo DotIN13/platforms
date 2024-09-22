@@ -55,12 +55,10 @@ class Settings {
 
     // Adjust for device pixel ratio
     const dpr = window.devicePixelRatio || 1;
-    canvasWidth *= dpr;
-    canvasHeight *= dpr;
 
     // Set the canvas's internal dimensions to match the displayed size multiplied by the dpr
-    this.canvas.width = canvasWidth;
-    this.canvas.height = canvasHeight;
+    this.canvas.width = canvasWidth * dpr;
+    this.canvas.height = canvasHeight * dpr;
 
     // Set the canvas's CSS size to the new width and height
     this.canvas.style.width = `${canvasWidth}px`;
