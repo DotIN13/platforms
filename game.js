@@ -121,10 +121,10 @@ class Game {
   }
 
   stopGameLoop() {
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
+    if (!this.animationFrameId) return;
+
+    cancelAnimationFrame(this.animationFrameId);
+    this.animationFrameId = null;
   }
 
   resetGame() {
@@ -143,8 +143,7 @@ class Game {
     this.score = 0;
     this.gameOver = false;
     this.lastTime = 0;
-    camera.y = 0;
-    camera.targetY = 0;
+    camera.reset();
 
     // Reset combo properties
     this.comboActive = false;
@@ -159,8 +158,7 @@ class Game {
 
   gameLoop(currentTime) {
     if (!this.lastTime) this.lastTime = currentTime;
-    const deltaTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
-    const deltaTicks = deltaTime * 60; // Convert to ticks (assuming 60 FPS)
+    const deltaTicks = ((currentTime - this.lastTime) / 1000) * 60; // Convert to seconds
     this.lastTime = currentTime;
 
     this.update(deltaTicks);
@@ -268,11 +266,7 @@ class Game {
     ctx.fillStyle = "cyan";
     ctx.font = "30px Arial";
     ctx.textAlign = "center";
-    ctx.fillText(
-      `COMBO x${this.comboCount + 1}!`,
-      settings.WIDTH / 2,
-      60
-    );
+    ctx.fillText(`COMBO x${this.comboCount + 1}!`, settings.WIDTH / 2, 60);
   }
 
   drawGameOver() {
